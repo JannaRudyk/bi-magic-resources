@@ -52,13 +52,14 @@ const SharesInfluence = () => {
   const cash = url?._cash;
 
   const filters: { [key: string]: any } = {
-    FISCVAR: ["=", fiscvar],
-    FISCPER: ["=", fiscper],
-    BRANCH: ["=", branch],
-    FARM: ["=", farm],
-    IR_FLAG: ["=", ir_flag],
-    TOTAL: ["=", null, "0"],
+    fiscvar: ["=", fiscvar],
+    fiscper: ["=", fiscper],
+    branch: ["=", branch],
+    farm: ["=", farm],
+    ir_flag: ["=", ir_flag],
+    total: ["=", 0],
   };
+
   useRowsAndColumnsFapart({
     pred_id,
     filters,
@@ -144,6 +145,55 @@ const SharesInfluence = () => {
       window.removeEventListener("popstate", onPopState);
     };
   }, [pred_id, onPopState]);
+
+  //Коды клавиш
+  const keys = { 37: 1, 38: 1, 39: 1, 40: 1 };
+
+  // Выбираем все вводимые элементы
+  const inputElems = document.getElementsByTagName("input");
+
+  // Создаем массив вводимых элементов
+  const inputElemsMass = Array.prototype.slice.call(inputElems);
+
+  //Добавляем обработчики
+  inputElemsMass.forEach((elem) => {
+    if (elem.type.toLowerCase() == "number") {
+      elem.addEventListener("focus", disableScroll, false);
+      elem.addEventListener("blur", enableScroll, false);
+    }
+  });
+
+  function preventDefault(e) {
+    e = e || window.event;
+    if (e.preventDefault) e.preventDefault();
+    e.returnValue = false;
+  }
+
+  function preventDefaultForScrollKeys(e) {
+    if (keys[e.keyCode]) {
+      preventDefault(e);
+      return false;
+    }
+  }
+
+  function disableScroll() {
+    if (window.addEventListener)
+      // older FF
+      window.addEventListener("DOMMouseScroll", preventDefault, false);
+    document.addEventListener("wheel", preventDefault, { passive: false }); // Disable scrolling in Chrome
+    window.onwheel = preventDefault; // modern standard
+    window.ontouchmove = preventDefault; // mobile
+    document.onkeydown = preventDefaultForScrollKeys;
+  }
+
+  function enableScroll() {
+    if (window.removeEventListener)
+      window.removeEventListener("DOMMouseScroll", preventDefault, false);
+    document.removeEventListener("wheel", preventDefault); // Enable scrolling in Chrome
+    window.onwheel = null;
+    window.ontouchmove = null;
+    document.onkeydown = null;
+  }
 
   if (
     pred_id === undefined ||

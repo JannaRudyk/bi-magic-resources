@@ -50,9 +50,9 @@ const SourceData = (props) => {
   const isView = url._fa_act === 34 ? true : false;
 
   const filters: { [key: string]: any } = {
-    PRED_IDF: ["=", pred_id],
-    FISCVAR: ["=", fiscvar],
-    FISCPER: ["=", fiscper],
+    pred_idf: ["=", pred_id],
+    fiscvar: ["=", fiscvar],
+    fiscper: ["=", fiscper],
   };
   const insStatus: StatusDto[] = [
     {
@@ -70,7 +70,7 @@ const SourceData = (props) => {
   useRows({
     pred_id,
     setRows,
-    filters: { ...filters, IR_FLAG: ["=", ir_flag, null] },
+    filters: { ...filters, ir_flag: ["=", ir_flag, null] },
     isReload,
     setIsReload,
     fiscper,
@@ -114,7 +114,7 @@ const SourceData = (props) => {
         KOOB_ID_ROWS,
         dimensionsRowsDataService.map((item) => item.id),
         [],
-        { ...filters, IR_FLAG: ["=", ir_flag, null] }
+        { ...filters, ir_flag: ["=", ir_flag, null] }
       )
         .then((data) => {
           const rows = mapRows(data as FainfoAllDto[]);
@@ -140,6 +140,55 @@ const SourceData = (props) => {
     };
   }, [pred_id]);
 
+  //Коды клавиш
+  const keys = { 37: 1, 38: 1, 39: 1, 40: 1 };
+
+  // Выбираем все вводимые элементы
+  const inputElems = document.getElementsByTagName("input");
+
+  // Создаем массив вводимых элементов
+  const inputElemsMass = Array.prototype.slice.call(inputElems);
+
+  //Добавляем обработчики
+  inputElemsMass.forEach((elem) => {
+    if (elem.type.toLowerCase() == "number") {
+      elem.addEventListener("focus", disableScroll, false);
+      elem.addEventListener("blur", enableScroll, false);
+    }
+  });
+
+  function preventDefault(e) {
+    e = e || window.event;
+    if (e.preventDefault) e.preventDefault();
+    e.returnValue = false;
+  }
+
+  function preventDefaultForScrollKeys(e) {
+    if (keys[e.keyCode]) {
+      preventDefault(e);
+      return false;
+    }
+  }
+
+  function disableScroll() {
+    if (window.addEventListener)
+      // older FF
+      window.addEventListener("DOMMouseScroll", preventDefault, false);
+    document.addEventListener("wheel", preventDefault, { passive: false }); // Disable scrolling in Chrome
+    window.onwheel = preventDefault; // modern standard
+    window.ontouchmove = preventDefault; // mobile
+    document.onkeydown = preventDefaultForScrollKeys;
+  }
+
+  function enableScroll() {
+    if (window.removeEventListener)
+      window.removeEventListener("DOMMouseScroll", preventDefault, false);
+    document.removeEventListener("wheel", preventDefault); // Enable scrolling in Chrome
+    window.onwheel = null;
+    window.ontouchmove = null;
+    document.onkeydown = null;
+  }
+
   const onPopState = useCallback(() => {
     if (isEditing) {
       const url = UrlState.getInstance().getModel();
@@ -149,6 +198,12 @@ const SourceData = (props) => {
   }, [isEditing, pred_id, unlock, isReload]);
 
   // Если пользователь нажал назад будучи на вкладке на которой была установлена блокировка
+  useEffect(() => {
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, [pred_id, onPopState]);
   useEffect(() => {
     window.addEventListener("popstate", onPopState);
     return () => {
