@@ -62,10 +62,75 @@ const getNameString = async (userName: string, schemaName: string, dashboardId: 
 };
 //======================================
 
+export interface filterUpd {
+    user_name: string;
+    schema_name: string;
+    dashboard_id: number;
+    save_name: string;
+    filter_str?: string;
+    
+  }
+  
+  export const ENDPOINT_UPDATE_FILTER_MASS =
+    "/api/v3/writeback/batch/koob/luxmsbi.users_filter";
+
+
+
+
+  export const updateFilterMass = async (data: filterUpd[]) => {
+    try {
+      const updateData: {
+        update: filterUpd;
+      }[] = [];
+      data.forEach((element) => {
+        updateData.push({ update: element });
+      });
+  
+      const response = await fetch(ENDPOINT_UPDATE_FILTER_MASS, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-type": "application/json; charset=utf-8" },
+        body: JSON.stringify(updateData, (key, value) => {
+          if (value !== "") return value;
+          else return null;
+        }),
+      });
+      if (response?.status !== 200) {
+        return response;
+      } else {
+        let parsed = await response?.json();
+        const insertData: {
+          insert: filterUpd;
+        }[] = [];
+        parsed.forEach((element) => {
+          if (element.count[0] === 0) {
+            insertData.push({ insert: element.update });
+          }
+        });
+  
+        if (insertData.length > 0) {
+          const response1 = await fetch(ENDPOINT_UPDATE_FILTER_MASS, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-type": "application/json; charset=utf-8" },
+            body: JSON.stringify(insertData, (key, value) => {
+              if (value !== "") return value;
+              else return null;
+            }),
+          });
+          return response1;
+        } else {
+          return response;
+        }
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
 /**
  * Сохраняем строку фильтров на сервер.
- */
+ */ /*
 const saveFiltersString = async (userName: string, schemaName: string, dashboardId: number, saveName: string, filterString: string): Promise<void> => {
     // Пробуем обновить запись с заданными user_name, schema_name и dashboard_id
     const updateData = {filter_str: filterString};
@@ -106,7 +171,7 @@ const saveFiltersString = async (userName: string, schemaName: string, dashboard
     } catch (error) {
         console.log(error);
     }
-};
+}; */
 //=====================================
 const getNamesString = async (userName: string, schemaName: string, dashboardId: number, saveName: string, filterString: string): Promise<void> => {
     // Пробуем обновить запись с заданными user_name, schema_name и dashboard_id
@@ -137,7 +202,7 @@ const FiltersStore = (props) => {
     const [currentFiltersStr, setCurrentFiltersStr] = useState(EMPTY_FILTERS_STR);
     // строковое представление фильтров загруженное с сервера
     const [savedFilterStr, setSavedFiltersStr] = useState(EMPTY_FILTERS_STR);
-
+    const [NewsavedFilterStr, setNewSavedFiltersStr] = useState(EMPTY_FILTERS_STR);
     //----------------------
 
     const [SavName, setSavName] = useState('Вариант1');
@@ -147,6 +212,7 @@ const FiltersStore = (props) => {
     //-----------------------
     // отличаются ли текущие фильтры от сохраненных на сервере
     const isFiltersModified = savedFilterStr !== currentFiltersStr;
+    const isFiltersModified2 = NewsavedFilterStr !== EMPTY_FILTERS_STR;
     // пустые ли текущие фильтры
     const isFiltersEmpty = currentFiltersStr === EMPTY_FILTERS_STR;
     // получаем служебные объекты, которые будем использовать в дальнейшем.
@@ -208,7 +274,7 @@ const FiltersStore = (props) => {
         setLoadName(arrN);
         };
         doWork2().finally();        
-    }, [authenticationService, cfg]);
+    }, [authenticationService, cfg , isFiltersModified,SavName]);
 
     // -----------------------------------------
     function handleChange(e) {
@@ -228,6 +294,16 @@ const FiltersStore = (props) => {
         }
         // загружаем текущее строкое представление фильтров на сервер
        // console.log(SavName);
+       const updateData: filterUpd[] = [];
+       updateData.push({
+        user_name: username,
+        schema_name: cfg.dataset.schemaName,
+        dashboard_id: Number(cfg.dashId),
+        save_name: SavName,
+        filter_str: currentFiltersStr,
+      });
+      await updateFilterMass(updateData);
+      /*
         await saveFiltersString(
             username,
             cfg.dataset.schemaName,
@@ -235,8 +311,10 @@ const FiltersStore = (props) => {
             SavName,
             currentFiltersStr,
         );
+        */
         // обновляем строковое представление фильтров загруженное с сервера
         setSavedFiltersStr(currentFiltersStr);
+        setNewSavedFiltersStr(currentFiltersStr);
         alert('Фильтр сохранен');
     };
     // обработчик клика по кнопке применения ранее сохраненных фильтров
