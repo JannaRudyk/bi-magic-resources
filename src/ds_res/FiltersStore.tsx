@@ -2,13 +2,35 @@ import React, { useMemo, useEffect, useState } from "react";
 
 import { KoobFiltersService } from "bi-internal/services";
 import { AuthenticationService, repo } from "bi-internal/core";
+import { KoobDataService } from "bi-internal/services";
 
 import "./FiltersStore.scss";
 
 const EMPTY_FILTERS_STR = "{}";
 const EMPTY_NAME_STR = [];
 
+/* Название куба на получение строк.
+ */
+export const KOOB_ID_ROWS = "luxmsbi.users_filter";
+
 const getEndpoint = (): string => "/api/db/public.users_filter";
+
+export const dimensionsUserFilterName = [
+  {
+    id: "save_name",
+    type: "STRING",
+    sql: "save_name",
+    title: "save_name",
+  },
+];
+export const dimensionsUserFilterStr = [
+  {
+    id: "filter_str",
+    type: "STRING",
+    sql: "filter_str",
+    title: "filter_str",
+  },
+];
 
 const getUrlFilterChunk = (props: {
   userName: string | undefined;
@@ -31,8 +53,36 @@ const getUrlNameChunk = (props: {
 //============================
 /**
  * Загружаем ранее сохранненную строку фильтров с сервера.
+ *
  */
 const getFiltersString = async (
+  userName: string | undefined,
+  schemaName: string,
+  dashboardId: number,
+  saveName: string | undefined
+): Promise<string> => {
+  const filters: { [key: string]: any } = {
+    USER_NAME: ["=", userName],
+    SCHEMA_NAME: ["=", schemaName],
+    DASHBOARD_ID: ["=", dashboardId],
+    SAVE_NAME: ["=", saveName],
+  };
+  let finalArray: string = "{}";
+
+  await KoobDataService.koobDataRequest3(
+    KOOB_ID_ROWS,
+    dimensionsUserFilterStr.map((item) => item.id),
+    [],
+    filters
+  ).then((data) => {
+    if (Array.isArray(data) && data.length === 1) {
+      finalArray = data[0].filter_str;
+    }
+  });
+
+  return finalArray;
+};
+const getFiltersStringOld = async (
   userName: string | undefined,
   schemaName: string,
   dashboardId: number,
@@ -61,12 +111,39 @@ const getFiltersString = async (
   }
   return EMPTY_FILTERS_STR;
 };
-//----------------------------------------
+
 const getNameString = async (
   userName: string | undefined,
   schemaName: string,
-  dashboardId: number,
-  saveName: string
+  dashboardId: number
+): Promise<any[]> => {
+  const filters: { [key: string]: any } = {
+    USER_NAME: ["=", userName],
+    SCHEMA_NAME: ["=", schemaName],
+    DASHBOARD_ID: ["=", dashboardId],
+  };
+  let finalArray: string[] = [];
+
+  await KoobDataService.koobDataRequest3(
+    KOOB_ID_ROWS,
+    dimensionsUserFilterName.map((item) => item.id),
+    [],
+    filters
+  ).then((data) => {
+    if (Array.isArray(data) && data.length > 0) {
+      finalArray = data.map(function (obj) {
+        return obj.save_name;
+      });
+    }
+  });
+
+  return finalArray;
+};
+//----------------------------------------
+const getNameStringOld = async (
+  userName: string | undefined,
+  schemaName: string,
+  dashboardId: number
 ): Promise<any[]> => {
   try {
     const response = await fetch(
@@ -235,9 +312,9 @@ const FiltersStore = (props) => {
       const arrN: React.SetStateAction<any[]> = await getNameString(
         username,
         cfg.dataset.schemaName,
-        Number(cfg.dashId),
-        SavName
+        Number(cfg.dashId)
       );
+
       setLoadName(arrN);
     };
     doWork2().finally();
